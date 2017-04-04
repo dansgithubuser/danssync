@@ -1,0 +1,3 @@
+*.pyc
+.danssync-test-src
+.danssync-test-dst
