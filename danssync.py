@@ -37,9 +37,15 @@ def sync_paths(src, dst):
 	for path, _ in hash_dst.items(): print(path)
 
 if __name__=='__main__':
-	import argparse
+	import argparse, datetime, time
 	parser=argparse.ArgumentParser()
 	parser.add_argument('src')
 	parser.add_argument('dst')
+	parser.add_argument('--period', '-p', type=int, default=0)
 	args=parser.parse_args()
-	sync_paths(args.src, args.dst)
+	while True:
+		print('{:%Y-%m-%d %H:%M:%S.%f}'.format(datetime.datetime.now()))
+		sync_paths(args.src, args.dst)
+		if args.period==0: break
+		time.sleep(args.period)
+
