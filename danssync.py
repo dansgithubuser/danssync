@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import collections, hashlib, os, shutil
+import collections, datetime, hashlib, os, shutil
 
 block_size=65536
 
@@ -27,7 +27,9 @@ def sync_paths(src, dst):
 		if hash_dst[path]!=hash:
 			s=os.path.join(src, path)
 			d=os.path.join(dst, path)
-			print('{} --> {}'.format(s, d))
+			print('{:%Y-%m-%d %H:%M:%S.%f} {} --> {}'.format(
+				datetime.datetime.now(), s, d
+			))
 			x=os.path.split(d)[0]
 			if not os.path.exists(x): os.makedirs(x)
 			shutil.copy2(s, d)
@@ -37,15 +39,26 @@ def sync_paths(src, dst):
 	for path, _ in hash_dst.items(): print(path)
 
 if __name__=='__main__':
-	import argparse, datetime, time
+	import argparse, dateutil.parser, time
 	parser=argparse.ArgumentParser()
 	parser.add_argument('src')
 	parser.add_argument('dst')
 	parser.add_argument('--period', '-p', type=int, default=0)
+	parser.add_argument('--time', '-t', default=None)
 	args=parser.parse_args()
-	while True:
-		print('{:%Y-%m-%d %H:%M:%S.%f}'.format(datetime.datetime.now()))
-		sync_paths(args.src, args.dst)
-		if args.period==0: break
-		time.sleep(args.period)
+	if args.period:
+		print('running with period {}'.format(args.period))
+		while True:
+			sync_paths(args.src, args.dst)
+			if args.period==0: break
+			time.sleep(args.period)
+	elif args.time:
+		while(True):
+			d=dateutil.parser.parse(args.time)-datetime.datetime.now()
+			s_day=24*60*60
+			t=(s_day*d.days+d.seconds)%s_day
+			print('sleeping for {}'.format(datetime.timedelta(seconds=t)))
+			time.sleep(t)
+			sync_paths(args.src, args.dst)
+	else: sync_paths(args.src, args.dst)
 
