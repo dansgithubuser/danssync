@@ -4,18 +4,24 @@ import collections, datetime, hashlib, os, shutil
 
 block_size=65536
 
+def pickle_link(path):
+	return 'DANSSYNC_PICKLED_LINK\n'+os.readlink(path)
+
+def hash_contents(contents):
+	hasher=hashlib.sha1()
+	for i in range(0, len(contents), block_size): hasher.update(contents[i:i+block_size])
+	return hasher.hexdigest()
+
 def hash_path(path):
 	d=collections.defaultdict(bool)
 	for root, dir_names, file_names in os.walk(path):
 		for file_name in file_names:
 			file_path=os.path.join(root, file_name)
-			with open(file_path) as file:
-				hasher=hashlib.sha1()
-				while True:
-					x=file.read(block_size)
-					if len(x)==0: break
-					hasher.update(x)
-				d[os.path.relpath(file_path, path)]=hasher.hexdigest()
+			if os.path.islink(file_path):
+				contents=pickle_link(file_path)
+			else:
+				with open(file_path) as file: contents=file.read()
+			d[os.path.relpath(file_path, path)]=hash_contents(contents)
 	return d
 
 def sync_paths(src, dst):
@@ -32,7 +38,11 @@ def sync_paths(src, dst):
 			))
 			x=os.path.split(d)[0]
 			if not os.path.exists(x): os.makedirs(x)
-			shutil.copy2(s, d)
+			if os.path.islink(s):
+				print('(link to {})'.format(os.readlink(s)))
+				with open(d, 'w') as file: file.write(pickle_link(s))
+			else:
+				shutil.copy2(s, d)
 		del hash_dst[path]
 	#report leftovers in dst
 	if len(hash_dst): print('leftovers in {}'.format(dst))
