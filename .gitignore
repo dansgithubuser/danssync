@@ -1,3 +1,4 @@
 *.pyc
+*.swp
 .danssync-test-src
 .danssync-test-dst

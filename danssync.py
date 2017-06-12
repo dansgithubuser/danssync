@@ -25,28 +25,39 @@ def hash_path(path):
 	return d
 
 def sync_paths(src, dst):
-	#get hashes
-	hash_src=hash_path(src)
-	hash_dst=hash_path(dst)
-	#go through src hash and make sure dst is up to date
-	for path, hash in hash_src.items():
-		if hash_dst[path]!=hash:
-			s=os.path.join(src, path)
-			d=os.path.join(dst, path)
-			print('{:%Y-%m-%d %H:%M:%S.%f} {} --> {}'.format(
-				datetime.datetime.now(), s, d
-			))
-			x=os.path.split(d)[0]
-			if not os.path.exists(x): os.makedirs(x)
-			if os.path.islink(s):
-				print('(link to {})'.format(os.readlink(s)))
-				with open(d, 'w') as file: file.write(pickle_link(s))
-			else:
-				shutil.copy2(s, d)
-		del hash_dst[path]
-	#report leftovers in dst
-	if len(hash_dst): print('leftovers in {}'.format(dst))
-	for path, _ in hash_dst.items(): print(path)
+	try:
+		#get hashes
+		hash_src=hash_path(src)
+		hash_dst=hash_path(dst)
+		#go through src hash and make sure dst is up to date
+		for path, hash in hash_src.items():
+			if hash_dst[path]!=hash:
+				s=os.path.join(src, path)
+				d=os.path.join(dst, path)
+				print('{:%Y-%m-%d %H:%M:%S.%f} {} --> {}'.format(
+					datetime.datetime.now(), s, d
+				))
+				x=os.path.split(d)[0]
+				if not os.path.exists(x): os.makedirs(x)
+				if os.path.islink(s):
+					print('(link to {})'.format(os.readlink(s)))
+					with open(d, 'w') as file: file.write(pickle_link(s))
+				else:
+					try: shutil.copy2(s, d)
+					except:
+						import traceback
+						print('Traceback while handling exception:')
+						traceback.print_stack()
+						traceback.print_exc()
+			del hash_dst[path]
+		#report leftovers in dst
+		if len(hash_dst): print('leftovers in {}'.format(dst))
+		for path, _ in hash_dst.items(): print(path)
+	except:
+		import traceback
+		print('Traceback while handling exception:')
+		traceback.print_stack()
+		traceback.print_exc()
 
 if __name__=='__main__':
 	import argparse, dateutil.parser, time
