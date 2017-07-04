@@ -4,6 +4,17 @@ import collections, datetime, hashlib, os, shutil
 
 block_size=65536
 
+def timestamp(s):
+	print('{:%Y-%m-%d %H:%M:%S.%f} {}'.format(datetime.datetime.now(), s))
+
+def attempt(f):
+	try: return f()
+	except:
+		import traceback
+		timestamp('Traceback while handling exception:')
+		traceback.print_stack()
+		traceback.print_exc()
+
 def pickle_link(path):
 	return 'DANSSYNC_PICKLED_LINK\n'+os.readlink(path)
 
@@ -20,44 +31,38 @@ def hash_path(path):
 			if os.path.islink(file_path):
 				contents=pickle_link(file_path)
 			else:
-				with open(file_path) as file: contents=file.read()
+				file=attempt(lambda: open(file_path))
+				if file==None: continue
+				contents=file.read()
+				file.close()
 			d[os.path.relpath(file_path, path)]=hash_contents(contents)
 	return d
 
-def sync_paths(src, dst):
-	try:
-		#get hashes
-		hash_src=hash_path(src)
-		hash_dst=hash_path(dst)
-		#go through src hash and make sure dst is up to date
-		for path, hash in hash_src.items():
-			if hash_dst[path]!=hash:
-				s=os.path.join(src, path)
-				d=os.path.join(dst, path)
-				print('{:%Y-%m-%d %H:%M:%S.%f} {} --> {}'.format(
-					datetime.datetime.now(), s, d
-				))
-				x=os.path.split(d)[0]
-				if not os.path.exists(x): os.makedirs(x)
-				if os.path.islink(s):
-					print('(link to {})'.format(os.readlink(s)))
+def sync_paths(src, dst, test=False):
+	#get hashes
+	timestamp('hashing src')
+	hash_src=hash_path(src)
+	timestamp('hashing dst')
+	hash_dst=hash_path(dst)
+	#go through src hash and make sure dst is up to date
+	for path, hash in hash_src.items():
+		if hash_dst[path]!=hash:
+			s=os.path.join(src, path)
+			d=os.path.join(dst, path)
+			timestamp('{} --> {}'.format(s, d))
+			x=os.path.split(d)[0]
+			if not os.path.exists(x): os.makedirs(x)
+			if os.path.islink(s):
+				timestamp('(link to {})'.format(os.readlink(s)))
+				if not test:
 					with open(d, 'w') as file: file.write(pickle_link(s))
-				else:
-					try: shutil.copy2(s, d)
-					except:
-						import traceback
-						print('Traceback while handling exception:')
-						traceback.print_stack()
-						traceback.print_exc()
-			del hash_dst[path]
-		#report leftovers in dst
-		if len(hash_dst): print('leftovers in {}'.format(dst))
-		for path, _ in hash_dst.items(): print(path)
-	except:
-		import traceback
-		print('Traceback while handling exception:')
-		traceback.print_stack()
-		traceback.print_exc()
+			else:
+				if not test:
+					attempt(lambda: shutil.copy2(s, d))
+		del hash_dst[path]
+	#report leftovers in dst
+	if len(hash_dst): timestamp('leftovers in {}'.format(dst))
+	for path, _ in hash_dst.items(): print(path)
 
 if __name__=='__main__':
 	import argparse, dateutil.parser, time
@@ -66,11 +71,15 @@ if __name__=='__main__':
 	parser.add_argument('dst')
 	parser.add_argument('--period', '-p', type=int, default=0)
 	parser.add_argument('--time', '-t', default=None)
+	parser.add_argument('--test', action='store_true')
 	args=parser.parse_args()
-	if args.period:
-		print('running with period {}'.format(args.period))
+	if args.test:
+		timestamp('testing')
+		sync_paths(args.src, args.dst, test=True)
+	elif args.period:
+		timestamp('running with period {}'.format(args.period))
 		while True:
-			sync_paths(args.src, args.dst)
+			attempt(lambda: sync_paths(args.src, args.dst))
 			if args.period==0: break
 			time.sleep(args.period)
 	elif args.time:
@@ -78,8 +87,8 @@ if __name__=='__main__':
 			d=dateutil.parser.parse(args.time)-datetime.datetime.now()
 			s_day=24*60*60
 			t=(s_day*d.days+d.seconds)%s_day
-			print('sleeping for {}'.format(datetime.timedelta(seconds=t)))
+			timestamp('sleeping for {}'.format(datetime.timedelta(seconds=t)))
 			time.sleep(t)
-			sync_paths(args.src, args.dst)
+			attempt(lambda: sync_paths(args.src, args.dst))
 	else: sync_paths(args.src, args.dst)
 
