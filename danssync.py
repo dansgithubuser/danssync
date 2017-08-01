@@ -56,7 +56,7 @@ def sync_paths(src, dst, test=False):
 			d=os.path.join(dst, path)
 			timestamp('{} --> {}'.format(s, d))
 			x=os.path.split(d)[0]
-			if not os.path.exists(x): os.makedirs(x)
+			if not os.path.exists(x): attempt(lambda: os.makedirs(x))
 			if os.path.islink(s):
 				timestamp('(link to {})'.format(os.readlink(s)))
 				if not test:
