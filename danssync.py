@@ -24,8 +24,13 @@ def hash_contents(contents):
 	return hasher.hexdigest()
 
 def hash_path(path):
+	import time
+	last_log=time.time()
 	d=collections.defaultdict(bool)
 	for root, dir_names, file_names in os.walk(path):
+		if time.time()-last_log>10:
+			timestamp('hashing {}'.format(root))
+			last_log=time.time()
 		for file_name in file_names:
 			file_path=os.path.join(root, file_name)
 			if os.path.islink(file_path):
