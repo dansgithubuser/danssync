@@ -67,6 +67,7 @@ def sync_paths(src, dst, test=False):
 		del hash_dst[path]
 	#report leftovers in dst
 	if len(hash_dst): timestamp('leftovers in {}'.format(dst))
+	else: timestamp('no leftovers')
 	for path, _ in hash_dst.items(): print(path)
 
 if __name__=='__main__':
